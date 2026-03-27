@@ -1,5 +1,8 @@
 # Smart Assignment Explainer AI
 
+
+https://smart-answers-explainer-ai.vercel.app/
+
 A full-stack web application that helps university students understand academic questions step-by-step using AI.
 
 ## Features
