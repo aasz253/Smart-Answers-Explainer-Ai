@@ -197,6 +197,10 @@ function App() {
         </div>
       </div>
     </div>
+
+    <footer className="footer">
+      <p>© 2026 SIFUNA CODEX</p>
+    </footer>
   );
 }
 

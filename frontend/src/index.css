@@ -833,6 +833,7 @@ body {
 @media (max-width: 640px) {
   .app {
     padding: 1rem;
+    padding-bottom: 4rem;
   }
 
   .header h1 {
@@ -846,4 +847,23 @@ body {
   .btn {
     width: 100%;
   }
+}
+
+.footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(90deg, var(--accent-black) 0%, var(--accent-black) 33%, var(--secondary) 33%, var(--secondary) 66%, var(--primary) 66%, var(--primary) 100%);
+  padding: 0.75rem;
+  text-align: center;
+  z-index: 100;
+}
+
+.footer p {
+  color: white;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+  margin: 0;
 }
