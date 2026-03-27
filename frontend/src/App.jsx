@@ -196,11 +196,11 @@ function App() {
           </div>
         </div>
       </div>
-    </div>
 
-    <footer className="footer">
-      <p>© 2026 SIFUNA CODEX</p>
-    </footer>
+      <footer className="footer">
+        <p>© 2026 SIFUNA CODEX</p>
+      </footer>
+    </div>
   );
 }
 
