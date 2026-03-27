@@ -1,113 +1,130 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useCallback } from 'react';
 
 function InputForm({ question, setQuestion, level, setLevel, onExplain, onSimplify, loading, hasResponse, image, setImage, previewUrl, setPreviewUrl }) {
   const fileInputRef = useRef(null);
-  const cameraInputRef = useRef(null);
+  const textareaRef = useRef(null);
+
+  const processImage = useCallback((file) => {
+    if (file && file.type.startsWith('image/')) {
+      setImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  }, [setImage, setPreviewUrl]);
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setImage(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewUrl(reader.result);
-      };
-      reader.readAsDataURL(file);
+      processImage(file);
     }
   };
 
-  const handleCameraCapture = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setImage(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewUrl(reader.result);
-      };
-      reader.readAsDataURL(file);
+  const handlePaste = useCallback((e) => {
+    const items = e.clipboardData?.items;
+    if (items) {
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) {
+            e.preventDefault();
+            processImage(file);
+            return;
+          }
+        }
+      }
     }
+  }, [processImage]);
+
+  const handleDrop = useCallback((e) => {
+    e.preventDefault();
+    const file = e.dataTransfer?.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      processImage(file);
+    }
+  }, [processImage]);
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
   };
 
   const removeImage = () => {
     setImage(null);
     setPreviewUrl(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
-    if (cameraInputRef.current) cameraInputRef.current.value = '';
+  };
+
+  const insertImageInText = () => {
+    fileInputRef.current?.click();
   };
 
   return (
     <div className="input-form">
-      <div className="form-group">
-        <label htmlFor="question">Your Question</label>
+      <div 
+        className="combined-input"
+        onPaste={handlePaste}
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+      >
         <textarea
+          ref={textareaRef}
           id="question"
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
-          placeholder="Paste your academic question here, or upload an image...&#10;&#10;Example: Find the derivative of x^2 + 3x + 2"
+          placeholder="Type your question here, or paste/drop an image...&#10;&#10;Example: Explain this math problem"
         />
-      </div>
-
-      <div className="image-upload-section">
-        <label>Add Image (Optional)</label>
-        <div className="image-buttons">
-          <input
-            type="file"
-            ref={fileInputRef}
-            accept="image/*"
-            onChange={handleImageUpload}
-            style={{ display: 'none' }}
-          />
-          <input
-            type="file"
-            ref={cameraInputRef}
-            accept="image/*"
-            capture="environment"
-            onChange={handleCameraCapture}
-            style={{ display: 'none' }}
-          />
-          <button
-            type="button"
-            className="image-btn"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={loading}
-          >
-            Upload Image
-          </button>
-          <button
-            type="button"
-            className="image-btn"
-            onClick={() => cameraInputRef.current?.click()}
-            disabled={loading}
-          >
-            Take Photo
-          </button>
-        </div>
+        
         {previewUrl && (
-          <div className="image-preview">
-            <img src={previewUrl} alt="Preview" />
-            <button type="button" className="remove-image" onClick={removeImage}>×</button>
+          <div className="image-preview-inline">
+            <img src={previewUrl} alt="Attached" />
+            <button type="button" className="remove-image-inline" onClick={removeImage}>×</button>
           </div>
         )}
       </div>
 
-      <div className="form-group">
-        <label htmlFor="level">Difficulty Level</label>
-        <select
-          id="level"
-          value={level}
-          onChange={(e) => setLevel(e.target.value)}
-        >
-          <option value="Beginner">Beginner</option>
-          <option value="Intermediate">Intermediate</option>
-          <option value="Advanced">Advanced</option>
-        </select>
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept="image/*"
+        onChange={handleImageUpload}
+        style={{ display: 'none' }}
+      />
+
+      <div className="input-toolbar">
+        <div className="image-tools">
+          <button
+            type="button"
+            className="tool-btn"
+            onClick={insertImageInText}
+            disabled={loading}
+            title="Upload Image"
+          >
+            📷 Add Image
+          </button>
+          <span className="tool-hint">or paste an image directly</span>
+        </div>
+
+        <div className="form-group level-select">
+          <label htmlFor="level">Level:</label>
+          <select
+            id="level"
+            value={level}
+            onChange={(e) => setLevel(e.target.value)}
+          >
+            <option value="Beginner">Beginner</option>
+            <option value="Intermediate">Intermediate</option>
+            <option value="Advanced">Advanced</option>
+          </select>
+        </div>
       </div>
 
       <div className="button-group">
         <button
           className="btn btn-primary"
           onClick={onExplain}
-          disabled={loading || (!question.trim() && !image)}
+          disabled={loading || (!question.trim() && !previewUrl)}
         >
           {loading ? 'Explaining...' : 'Explain Question'}
         </button>

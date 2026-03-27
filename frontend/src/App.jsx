@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import InputForm from './components/InputForm';
 import OutputDisplay from './components/OutputDisplay';
@@ -23,7 +23,7 @@ function App() {
     }
   }, []);
 
-  const saveToHistory = (q, lvl, exp) => {
+  const saveToHistory = useCallback((q, lvl, exp) => {
     const newEntry = {
       id: Date.now(),
       question: q,
@@ -31,35 +31,57 @@ function App() {
       explanation: exp,
       timestamp: new Date().toLocaleString(),
     };
-    const updated = [newEntry, ...history].slice(0, 50);
-    setHistory(updated);
-    localStorage.setItem('explanationHistory', JSON.stringify(updated));
-  };
+    setHistory(prev => {
+      const updated = [newEntry, ...prev].slice(0, 50);
+      localStorage.setItem('explanationHistory', JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
 
-  const handleExplain = async () => {
-    if (!question.trim() && !image) return;
+  const handleExplain = useCallback(async () => {
+    const currentQuestion = question.trim();
+    console.log('DEBUG - question:', currentQuestion);
+    console.log('DEBUG - image:', !!image, 'previewUrl:', !!previewUrl);
+    
+    if (!currentQuestion && !previewUrl) {
+      alert('Please enter a question or upload an image');
+      return;
+    }
 
     setLoading(true);
+    setResponse('Generating explanation...');
+    
     try {
-      const formData = new FormData();
-      formData.append('question', question);
-      formData.append('level', level);
-      formData.append('mode', 'normal');
-      if (image) {
-        formData.append('image', image);
+      const payload = {
+        question: currentQuestion,
+        level,
+        mode: 'normal'
+      };
+
+      if (previewUrl && image) {
+        payload.imageBase64 = previewUrl;
+        payload.imageType = image.type || 'image/jpeg';
       }
 
-      const res = await axios.post(`${API_URL}/explain`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+      const res = await axios.post(`${API_URL}/explain`, payload, {
+        headers: { 'Content-Type': 'application/json' }
       });
+      
       setResponse(res.data.explanation);
-      saveToHistory(question, level, res.data.explanation);
+      if (currentQuestion) {
+        saveToHistory(currentQuestion, level, res.data.explanation);
+      }
+      
+      setQuestion('');
+      setImage(null);
+      setPreviewUrl(null);
     } catch (error) {
-      console.error('Error:', error);
-      setResponse('Sorry, there was an error generating the explanation. Please try again.');
+      console.error('Error:', error.response?.data);
+      const errorMsg = error.response?.data?.error || 'Sorry, there was an error generating the explanation. Please try again.';
+      setResponse(`Error: ${errorMsg}`);
     }
     setLoading(false);
-  };
+  }, [question, level, image, previewUrl, saveToHistory]);
 
   const handleSimplify = async () => {
     if (!response) return;
@@ -75,7 +97,8 @@ function App() {
       setResponse(res.data.explanation);
     } catch (error) {
       console.error('Error:', error);
-      setResponse('Sorry, there was an error simplifying the explanation. Please try again.');
+      const errorMsg = error.response?.data?.error || 'Sorry, there was an error simplifying the explanation. Please try again.';
+      setResponse(`Error: ${errorMsg}`);
     }
     setLoading(false);
   };

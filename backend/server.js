@@ -1,7 +1,6 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import multer from 'multer';
 
 dotenv.config();
 
@@ -13,13 +12,8 @@ app.use(cors({
   origin: FRONTEND_URL,
   credentials: true
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }
-});
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 const SYSTEM_PROMPT = `You are an expert lecturer and tutor. Teach clearly based on the student's level.
 
@@ -43,12 +37,25 @@ const SIMPLIFY_PROMPT = `Explain the following content again in the simplest way
 Content:
 `;
 
-app.post('/api/explain', upload.single('image'), async (req, res) => {
+app.post('/api/explain', async (req, res) => {
   try {
-    const { question, level, mode, previousResponse } = req.body;
-    const image = req.file;
+    const { question, level, mode, previousResponse, imageBase64, imageType } = req.body;
+    console.log('Received - question:', question, 'level:', level, 'mode:', mode, 'hasImage:', !!imageBase64);
+    
+    let image = null;
+    if (imageBase64) {
+      if (imageBase64.startsWith('data:')) {
+        const match = imageBase64.match(/^data:([^;]+);base64,(.+)$/);
+        if (match) {
+          image = { base64: match[2], type: match[1] };
+        }
+      } else {
+        image = { base64: imageBase64, type: imageType || 'image/jpeg' };
+      }
+    }
 
     if (!question && !previousResponse && !image) {
+      console.log('Validation failed - no question, previousResponse, or image');
       return res.status(400).json({ error: 'Question, image, or previous response is required' });
     }
 
@@ -66,19 +73,17 @@ app.post('/api/explain', upload.single('image'), async (req, res) => {
       userContent.push({ type: 'text', text: textContent });
 
       if (image) {
-        const base64Image = image.buffer.toString('base64');
-        const mimeType = image.mimetype || 'image/jpeg';
         userContent.push({
           type: 'image_url',
           image_url: {
-            url: `data:${mimeType};base64,${base64Image}`
+            url: `data:${image.type || 'image/jpeg'};base64,${image.base64}`
           }
         });
       }
     }
 
     const apiKey = process.env.OPENROUTER_API_KEY;
-    const model = 'anthropic/claude-3-haiku-20241107';
+    const model = image ? 'anthropic/claude-3.5-sonnet' : 'anthropic/claude-3-haiku';
     const url = 'https://openrouter.ai/api/v1/chat/completions';
 
     const requestBody = {
