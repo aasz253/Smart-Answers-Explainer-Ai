@@ -5,17 +5,20 @@
 }
 
 :root {
-  --primary: #6366f1;
-  --primary-hover: #4f46e5;
-  --secondary: #10b981;
-  --secondary-hover: #059669;
-  --background: #f8fafc;
+  --primary: #006600;
+  --primary-hover: #004d00;
+  --secondary: #bb0000;
+  --secondary-hover: #8b0000;
+  --background: #f5f5f5;
   --card-bg: #ffffff;
-  --text-primary: #1e293b;
-  --text-secondary: #64748b;
-  --border: #e2e8f0;
+  --text-primary: #000000;
+  --text-secondary: #333333;
+  --border: #cccccc;
   --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --accent-red: #bb0000;
+  --accent-green: #006600;
+  --accent-black: #000000;
 }
 
 body {
@@ -208,7 +211,10 @@ body {
 .header h1 {
   font-size: 2rem;
   font-weight: 700;
-  color: var(--primary);
+  background: linear-gradient(90deg, var(--accent-black) 0%, var(--accent-black) 33%, var(--secondary) 33%, var(--secondary) 66%, var(--primary) 66%, var(--primary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   margin-bottom: 0.5rem;
 }
 
@@ -422,8 +428,9 @@ body {
 }
 
 .btn-primary {
-  background: var(--primary);
+  background: var(--accent-green);
   color: white;
+  border: 2px solid var(--accent-black);
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -435,6 +442,7 @@ body {
 .btn-secondary {
   background: var(--secondary);
   color: white;
+  border: 2px solid var(--accent-black);
 }
 
 .btn-secondary:hover:not(:disabled) {
@@ -689,8 +697,9 @@ body {
 }
 
 .btn-primary {
-  background: var(--primary);
+  background: var(--accent-green);
   color: white;
+  border: 2px solid var(--accent-black);
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -702,6 +711,7 @@ body {
 .btn-secondary {
   background: var(--secondary);
   color: white;
+  border: 2px solid var(--accent-black);
 }
 
 .btn-secondary:hover:not(:disabled) {
