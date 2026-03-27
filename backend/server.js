@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import multer from 'multer';
 
 dotenv.config();
 
@@ -13,6 +14,12 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }
+});
 
 const SYSTEM_PROMPT = `You are an expert lecturer and tutor. Teach clearly based on the student's level.
 
@@ -36,36 +43,49 @@ const SIMPLIFY_PROMPT = `Explain the following content again in the simplest way
 Content:
 `;
 
-app.post('/api/explain', async (req, res) => {
+app.post('/api/explain', upload.single('image'), async (req, res) => {
   try {
     const { question, level, mode, previousResponse } = req.body;
+    const image = req.file;
 
-    if (!question && !previousResponse) {
-      return res.status(400).json({ error: 'Question or previous response is required' });
+    if (!question && !previousResponse && !image) {
+      return res.status(400).json({ error: 'Question, image, or previous response is required' });
     }
 
-    let userMessage;
     let systemPrompt = SYSTEM_PROMPT;
+    let userContent = [];
 
     if (mode === 'simple' && previousResponse) {
-      userMessage = SIMPLIFY_PROMPT + previousResponse;
+      userContent.push({
+        type: 'text',
+        text: SIMPLIFY_PROMPT + previousResponse
+      });
       systemPrompt = 'You are a patient teacher who explains things in the simplest way possible.';
     } else {
-      userMessage = `Student Level: ${level}
+      let textContent = `Student Level: ${level}\n\nQuestion:\n${question || '(See image below)'}`;
+      userContent.push({ type: 'text', text: textContent });
 
-Question:
-${question}`;
+      if (image) {
+        const base64Image = image.buffer.toString('base64');
+        const mimeType = image.mimetype || 'image/jpeg';
+        userContent.push({
+          type: 'image_url',
+          image_url: {
+            url: `data:${mimeType};base64,${base64Image}`
+          }
+        });
+      }
     }
 
     const apiKey = process.env.OPENROUTER_API_KEY;
-    const model = 'anthropic/claude-3-haiku';
+    const model = 'anthropic/claude-3-haiku-20241107';
     const url = 'https://openrouter.ai/api/v1/chat/completions';
 
     const requestBody = {
       model: model,
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage }
+        { role: 'user', content: userContent }
       ],
       max_tokens: 2000,
       temperature: 0.7
@@ -76,7 +96,7 @@ ${question}`;
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
-        'HTTP-Referer': 'http://localhost:5173',
+        'HTTP-Referer': FRONTEND_URL,
         'X-Title': 'Smart Assignment Explainer'
       },
       body: JSON.stringify(requestBody)
@@ -85,15 +105,14 @@ ${question}`;
     const data = await response.json();
 
     if (!response.ok) {
-      console.error('OpenRouter API Error:', response.status, JSON.stringify(data));
-      return res.status(response.status).json({ error: data.error?.message || 'OpenRouter API error', details: data });
+      console.error('OpenRouter API Error:', response.status);
+      return res.status(response.status).json({ error: data.error?.message || 'OpenRouter API error' });
     }
 
     const explanation = data.choices?.[0]?.message?.content;
 
     if (!explanation) {
-      console.error('No explanation in response:', JSON.stringify(data));
-      return res.status(500).json({ error: 'No explanation returned from OpenRouter', details: data });
+      return res.status(500).json({ error: 'No explanation returned from OpenRouter' });
     }
 
     res.json({ explanation });

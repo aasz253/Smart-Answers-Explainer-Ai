@@ -13,6 +13,8 @@ function App() {
   const [history, setHistory] = useState([]);
   const [selectedHistory, setSelectedHistory] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [image, setImage] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('explanationHistory');
@@ -35,14 +37,20 @@ function App() {
   };
 
   const handleExplain = async () => {
-    if (!question.trim()) return;
+    if (!question.trim() && !image) return;
 
     setLoading(true);
     try {
-      const res = await axios.post(`${API_URL}/explain`, {
-        question,
-        level,
-        mode: 'normal',
+      const formData = new FormData();
+      formData.append('question', question);
+      formData.append('level', level);
+      formData.append('mode', 'normal');
+      if (image) {
+        formData.append('image', image);
+      }
+
+      const res = await axios.post(`${API_URL}/explain`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
       setResponse(res.data.explanation);
       saveToHistory(question, level, res.data.explanation);
@@ -122,6 +130,10 @@ function App() {
             onSimplify={handleSimplify}
             loading={loading}
             hasResponse={!!response}
+            image={image}
+            setImage={setImage}
+            previewUrl={previewUrl}
+            setPreviewUrl={setPreviewUrl}
           />
 
           <OutputDisplay response={response} loading={loading} />

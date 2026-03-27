@@ -1,6 +1,40 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 
-function InputForm({ question, setQuestion, level, setLevel, onExplain, onSimplify, loading, hasResponse }) {
+function InputForm({ question, setQuestion, level, setLevel, onExplain, onSimplify, loading, hasResponse, image, setImage, previewUrl, setPreviewUrl }) {
+  const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleCameraCapture = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+    setImage(null);
+    setPreviewUrl(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
+  };
+
   return (
     <div className="input-form">
       <div className="form-group">
@@ -9,8 +43,51 @@ function InputForm({ question, setQuestion, level, setLevel, onExplain, onSimpli
           id="question"
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
-          placeholder="Paste your academic question here...&#10;&#10;Example: Find the derivative of x^2 + 3x + 2"
+          placeholder="Paste your academic question here, or upload an image...&#10;&#10;Example: Find the derivative of x^2 + 3x + 2"
         />
+      </div>
+
+      <div className="image-upload-section">
+        <label>Add Image (Optional)</label>
+        <div className="image-buttons">
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept="image/*"
+            onChange={handleImageUpload}
+            style={{ display: 'none' }}
+          />
+          <input
+            type="file"
+            ref={cameraInputRef}
+            accept="image/*"
+            capture="environment"
+            onChange={handleCameraCapture}
+            style={{ display: 'none' }}
+          />
+          <button
+            type="button"
+            className="image-btn"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={loading}
+          >
+            Upload Image
+          </button>
+          <button
+            type="button"
+            className="image-btn"
+            onClick={() => cameraInputRef.current?.click()}
+            disabled={loading}
+          >
+            Take Photo
+          </button>
+        </div>
+        {previewUrl && (
+          <div className="image-preview">
+            <img src={previewUrl} alt="Preview" />
+            <button type="button" className="remove-image" onClick={removeImage}>×</button>
+          </div>
+        )}
       </div>
 
       <div className="form-group">
@@ -30,7 +107,7 @@ function InputForm({ question, setQuestion, level, setLevel, onExplain, onSimpli
         <button
           className="btn btn-primary"
           onClick={onExplain}
-          disabled={loading || !question.trim()}
+          disabled={loading || (!question.trim() && !image)}
         >
           {loading ? 'Explaining...' : 'Explain Question'}
         </button>
