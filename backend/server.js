@@ -6,8 +6,12 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
-app.use(cors());
+app.use(cors({
+  origin: FRONTEND_URL,
+  credentials: true
+}));
 app.use(express.json());
 
 const SYSTEM_PROMPT = `You are an expert lecturer and tutor. Teach clearly based on the student's level.
@@ -53,32 +57,27 @@ Question:
 ${question}`;
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    const model = 'gemini-2.0-flash';
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    const model = 'anthropic/claude-3-haiku';
+    const url = 'https://openrouter.ai/api/v1/chat/completions';
 
     const requestBody = {
-      contents: [{
-        parts: [{
-          text: `${systemPrompt}\n\n${userMessage}`
-        }]
-      }],
-      generationConfig: {
-        maxOutputTokens: 2000,
-        temperature: 0.7,
-      },
-      safetySettings: [
-        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
-      ]
+      model: model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userMessage }
+      ],
+      max_tokens: 2000,
+      temperature: 0.7
     };
 
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'HTTP-Referer': 'http://localhost:5173',
+        'X-Title': 'Smart Assignment Explainer'
       },
       body: JSON.stringify(requestBody)
     });
@@ -86,20 +85,15 @@ ${question}`;
     const data = await response.json();
 
     if (!response.ok) {
-      console.error('Gemini API Error:', response.status, JSON.stringify(data));
-      return res.status(response.status).json({ error: data.error?.message || 'Gemini API error', details: data });
+      console.error('OpenRouter API Error:', response.status, JSON.stringify(data));
+      return res.status(response.status).json({ error: data.error?.message || 'OpenRouter API error', details: data });
     }
 
-    const explanation = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const explanation = data.choices?.[0]?.message?.content;
 
     if (!explanation) {
       console.error('No explanation in response:', JSON.stringify(data));
-      
-      if (data.candidates?.[0]?.finishReason === 'SAFETY') {
-        return res.status(400).json({ error: 'Content blocked by safety filters. Please try a different question.' });
-      }
-      
-      return res.status(500).json({ error: 'No explanation returned from Gemini', details: data });
+      return res.status(500).json({ error: 'No explanation returned from OpenRouter', details: data });
     }
 
     res.json({ explanation });
@@ -111,7 +105,7 @@ ${question}`;
 });
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Smart Assignment Explainer API is running with Gemini' });
+  res.json({ status: 'ok', message: 'Smart Assignment Explainer API is running with OpenRouter' });
 });
 
 app.listen(PORT, () => {
